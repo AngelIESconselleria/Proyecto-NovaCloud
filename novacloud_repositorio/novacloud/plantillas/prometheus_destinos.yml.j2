@@ -1,0 +1,5 @@
+# Gestionado por Ansible (rol monitorizacion).
+- targets:
+{% for h in groups['all'] if h != 'fw01' %}
+    - "{{ hostvars[h].ansible_host }}:9100"
+{% endfor %}

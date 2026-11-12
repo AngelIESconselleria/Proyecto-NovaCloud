@@ -1,0 +1,14 @@
+---
+# Direccionamiento 10.108.VLAN.0/24 (ver documentacion/arquitectura.md)
+red_vlans:
+  gestion:  { id: 10, red: 10.108.10.0/24 }
+  dmz:      { id: 20, red: 10.108.20.0/24 }
+  servicios: { id: 30, red: 10.108.30.0/24 }
+  datos:    { id: 40, red: 10.108.40.0/24 }
+  copias:   { id: 50, red: 10.108.50.0/24 }
+  usuarios: { id: 60, red: 10.108.60.0/24 }
+red_ip_bastion: 10.108.10.10
+red_ip_ansible: 10.108.10.20
+red_ip_monitor: 10.108.10.30
+red_ip_erp: 10.108.30.20
+red_ip_nextcloud: 10.108.30.30

@@ -1,0 +1,26 @@
+#!/usr/sbin/nft -f
+# Gestionado por Ansible (rol firewall). Política: bloquear por defecto.
+flush ruleset
+table inet filter {
+  chain input {
+    type filter hook input priority 0; policy drop;
+    ct state established,related accept
+    iif lo accept
+    ip protocol icmp accept
+{% if firewall_ssh_origenes %}
+    ip saddr { {{ firewall_ssh_origenes | join(', ') }} } tcp dport 22 accept
+{% endif %}
+{% if firewall_monitor_ip %}
+    ip saddr {{ firewall_monitor_ip }} tcp dport 9100 accept
+{% endif %}
+{% for regla in firewall_puertos_extra %}
+    ip saddr {{ regla.origen }} tcp dport {{ regla.puerto }} accept
+{% endfor %}
+  }
+  chain forward {
+    type filter hook forward priority 0; policy drop;
+  }
+  chain output {
+    type filter hook output priority 0; policy accept;
+  }
+}

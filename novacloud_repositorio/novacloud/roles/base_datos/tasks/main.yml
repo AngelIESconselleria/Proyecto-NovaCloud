@@ -1,0 +1,26 @@
+---
+- name: Instalar PostgreSQL
+  ansible.builtin.apt:
+    name:
+      - postgresql
+      - python3-psycopg2
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Crear una base de datos por aplicación
+  community.postgresql.postgresql_db:
+    name: "{{ item.nombre }}"
+    state: present
+  become_user: postgres
+  loop: "{{ bd_clientes }}"
+
+- name: Crear un usuario por aplicación con su propia contraseña
+  community.postgresql.postgresql_user:
+    name: "{{ item.usuario }}"
+    password: "{{ item.password }}"
+    db: "{{ item.nombre }}"
+    state: present
+  become_user: postgres
+  loop: "{{ bd_clientes }}"
+  no_log: true

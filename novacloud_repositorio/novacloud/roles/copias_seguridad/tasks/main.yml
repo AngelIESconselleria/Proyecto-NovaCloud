@@ -1,0 +1,24 @@
+---
+- name: Crear el directorio de copias
+  ansible.builtin.file:
+    path: "{{ copias_destino }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Instalar el script de copia de configuración
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../plantillas/backup_config.sh.j2"
+    dest: /usr/local/sbin/backup-config.sh
+    owner: root
+    group: root
+    mode: "0750"
+
+- name: Programar la copia diaria
+  ansible.builtin.cron:
+    name: "Copia de configuración NovaCloud"
+    minute: "{{ copias_minuto }}"
+    hour: "{{ copias_hora }}"
+    job: /usr/local/sbin/backup-config.sh
+    user: root

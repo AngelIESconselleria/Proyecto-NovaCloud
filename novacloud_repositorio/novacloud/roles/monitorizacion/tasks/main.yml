@@ -1,0 +1,31 @@
+---
+- name: Instalar el exportador de métricas del sistema
+  ansible.builtin.apt:
+    name: prometheus-node-exporter
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Instalar Prometheus en el servidor de monitorización
+  ansible.builtin.apt:
+    name: prometheus
+    state: present
+  when: inventory_hostname in groups['monitor']
+
+- name: Crear el directorio de destinos
+  ansible.builtin.file:
+    path: "{{ monitorizacion_directorio_destinos }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: inventory_hostname in groups['monitor']
+
+- name: Generar la lista de destinos a partir del inventario
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../plantillas/prometheus_destinos.yml.j2"
+    dest: "{{ monitorizacion_directorio_destinos }}/nodos.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  when: inventory_hostname in groups['monitor']
+  notify: Recargar prometheus

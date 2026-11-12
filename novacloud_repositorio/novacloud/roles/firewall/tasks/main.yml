@@ -1,0 +1,24 @@
+---
+- name: Instalar nftables
+  ansible.builtin.package:
+    name: nftables
+    state: present
+  when: firewall_aplicar | bool
+
+- name: Cargar las reglas locales (bloqueo por defecto)
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../plantillas/nftables.conf.j2"
+    dest: /etc/nftables.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/nft -c -f %s
+  when: firewall_aplicar | bool
+  notify: Recargar nftables
+
+- name: Activar nftables al arrancar
+  ansible.builtin.service:
+    name: nftables
+    enabled: true
+    state: started
+  when: firewall_aplicar | bool

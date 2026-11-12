@@ -1,0 +1,5 @@
+---
+firewall_aplicar: false
+firewall_ssh_origenes: []
+firewall_monitor_ip: ""
+firewall_puertos_extra: []

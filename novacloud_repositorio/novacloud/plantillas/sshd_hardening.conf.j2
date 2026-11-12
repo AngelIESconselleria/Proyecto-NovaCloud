@@ -1,0 +1,8 @@
+# Gestionado por Ansible (rol seguridad). No editar a mano.
+PasswordAuthentication no
+PermitRootLogin {{ seguridad_permitir_root }}
+PubkeyAuthentication yes
+AuthenticationMethods publickey
+AllowGroups {{ seguridad_grupo_ssh }}
+MaxAuthTries 3
+LogLevel VERBOSE

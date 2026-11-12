@@ -1,0 +1,4 @@
+---
+web_cert: /etc/ssl/novacloud/nube.crt
+web_key: /etc/ssl/novacloud/nube.key
+web_backend_nextcloud: "{{ red_ip_nextcloud }}:443"

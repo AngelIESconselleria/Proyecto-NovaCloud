@@ -1,0 +1,8 @@
+---
+# Firewall local por servidor (complementa a OPNsense dentro de cada VLAN)
+firewall_aplicar: false            # poner a true tras probarlo en el laboratorio
+firewall_ssh_origenes:
+  - "{{ red_ip_bastion }}"
+  - "{{ red_ip_ansible }}"
+firewall_monitor_ip: "{{ red_ip_monitor }}"
+firewall_puertos_extra: []         # p. ej. [{ puerto: 443, origen: 10.108.60.0/24 }]

@@ -1,0 +1,4 @@
+---
+seguridad_grupo_ssh: ssh-admins
+seguridad_ssh_servicio: "{{ 'ssh' if ansible_os_family == 'Debian' else 'sshd' }}"
+seguridad_permitir_root: "no"      # en pve1 y pve2 se sobrescribe con prohibit-password

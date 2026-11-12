@@ -1,0 +1,50 @@
+---
+# Despliegue completo de NovaCloud:  ansible-playbook playbooks/site.yml --check --diff
+- name: Seguridad básica en todos los servidores Linux
+  hosts: all:!firewall
+  become: true
+  vars_files:
+    - ../variables/general.yml
+    - ../variables/red.yml
+  roles:
+    - seguridad
+
+- name: Firewall local por servidor
+  hosts: all:!firewall:!proxmox:!backup
+  become: true
+  vars_files:
+    - ../variables/red.yml
+    - ../variables/firewall.yml
+  roles:
+    - firewall
+
+- name: Servicios web (proxy inverso)
+  hosts: web
+  become: true
+  vars_files:
+    - ../variables/general.yml
+    - ../variables/red.yml
+  roles:
+    - servicios_web
+
+- name: Base de datos
+  hosts: db
+  become: true
+  vars_files:
+    - ../variables/bd.yml
+  roles:
+    - base_datos
+
+- name: Monitorización
+  hosts: all:!firewall
+  become: true
+  vars_files:
+    - ../variables/red.yml
+  roles:
+    - monitorizacion
+
+- name: Copias de configuración y bases de datos
+  hosts: management:db:app:web
+  become: true
+  roles:
+    - copias_seguridad

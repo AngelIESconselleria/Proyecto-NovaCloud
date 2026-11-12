@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Gestionado por Ansible (rol copias_seguridad).
+# Copia /etc y, si existe PostgreSQL, un volcado; borra copias antiguas.
+set -euo pipefail
+DESTINO="{{ copias_destino }}"
+FECHA="$(date +%Y%m%d-%H%M)"
+tar -czf "${DESTINO}/etc-${HOSTNAME}-${FECHA}.tar.gz" /etc
+if command -v pg_dumpall >/dev/null 2>&1; then
+  su - postgres -c "pg_dumpall" | gzip > "${DESTINO}/postgres-${FECHA}.sql.gz"
+fi
+find "${DESTINO}" -type f -mtime +{{ copias_retencion_dias }} -delete

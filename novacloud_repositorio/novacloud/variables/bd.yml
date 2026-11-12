@@ -1,0 +1,4 @@
+---
+bd_clientes:
+  - { nombre: erp, usuario: erp_app, origen: 10.108.30.20/32, password: "{{ vault_db_erp_password | default('') }}" }
+  - { nombre: nextcloud, usuario: nextcloud_app, origen: 10.108.30.30/32, password: "{{ vault_db_nextcloud_password | default('') }}" }

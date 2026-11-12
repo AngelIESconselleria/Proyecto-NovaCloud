@@ -1,0 +1,21 @@
+---
+- name: Crear el grupo de administradores SSH
+  ansible.builtin.group:
+    name: "{{ seguridad_grupo_ssh }}"
+    state: present
+
+- name: Endurecer sshd (solo claves, sin root)
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../plantillas/sshd_hardening.conf.j2"
+    dest: /etc/ssh/sshd_config.d/10-novacloud.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Reiniciar sshd
+
+- name: Instalar actualizaciones automáticas de seguridad
+  ansible.builtin.apt:
+    name: unattended-upgrades
+    state: present
+  when: ansible_os_family == "Debian"

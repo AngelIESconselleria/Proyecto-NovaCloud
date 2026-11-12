@@ -1,0 +1,5 @@
+---
+copias_destino: /var/backups/novacloud
+copias_retencion_dias: 7
+copias_hora: "02"
+copias_minuto: "30"
