@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Gestionado por Ansible (rol green_it). No editar a mano.
+# Apaga por SSH y enciende por Wake-on-LAN los puestos de trabajo.
+# Uso: green-pcs.sh {encender|apagar}
+set -uo pipefail
+
+LISTA="{{ green_conf_dir }}/puestos.txt"
+CERRADOS="{{ green_conf_dir }}/dias_cerrados.txt"
+ESTADO="{{ green_estado_dir }}"
+TEXTFILE="{{ green_textfile_dir }}"
+LOG="{{ green_log }}"
+USUARIO="{{ green_usuario_puestos }}"
+BROADCAST="{{ green_wol_broadcast }}"
+HOY="${GREEN_HOY:-$(date +%F)}"
+AHORA="${GREEN_AHORA:-$(date +%s)}"
+ACCION="${1:-}"
+
+case "$ACCION" in
+  encender|apagar) ;;
+  *) echo "Uso: $0 {encender|apagar}" >&2; exit 2 ;;
+esac
+mkdir -p "$ESTADO" "$TEXTFILE"
+log() { echo "$(date -d "@$AHORA" '+%F %T') $*" >> "$LOG"; }
+
+metricas() {
+  local tmp seg
+  seg="$(cat "$ESTADO/puestos_segundos" 2>/dev/null || echo 0)"
+  tmp="$(mktemp "$TEXTFILE/.green.XXXXXX")"
+  {
+    echo "# HELP novacloud_green_puestos_horas_ahorradas_total Horas de puesto apagado que estaban encendidos a la hora de cierre"
+    echo "# TYPE novacloud_green_puestos_horas_ahorradas_total counter"
+    awk -v s="$seg" 'BEGIN { printf "novacloud_green_puestos_horas_ahorradas_total %.4f\n", s/3600 }'
+  } > "$tmp"
+  chmod 0644 "$tmp"
+  mv "$tmp" "$TEXTFILE/novacloud_green_puestos.prom"
+}
+
+if [ "$ACCION" = "apagar" ]; then
+  ok=0
+  while read -r nombre mac; do
+    case "$nombre" in ""|\#*) continue ;; esac
+    if ssh -o BatchMode=yes -o ConnectTimeout=5 "$USUARIO@$nombre" "sudo shutdown -h +5 'Apagado programado Green IT de NovaCloud'" >/dev/null 2>&1; then
+      ok=$(( ok + 1 )); log "APAGADO $nombre"
+    else
+      log "SIN ACCION $nombre (ya apagado o inalcanzable)"
+    fi
+  done < "$LISTA"
+  echo "$ok" > "$ESTADO/puestos_apagados_ok"
+  echo "$AHORA" > "$ESTADO/puestos_apagados_desde"
+else
+  if [ -f "$CERRADOS" ] && grep -qx "$HOY" "$CERRADOS"; then
+    log "DIA CERRADO no se enciende ningun puesto"
+  else
+    while read -r nombre mac; do
+      case "$nombre" in ""|\#*) continue ;; esac
+      wakeonlan -i "$BROADCAST" "$mac" >/dev/null 2>&1 && log "ENCENDIDO $nombre (WoL)"
+    done < "$LISTA"
+  fi
+  if [ -f "$ESTADO/puestos_apagados_desde" ]; then
+    ok="$(cat "$ESTADO/puestos_apagados_ok")"
+    desde="$(cat "$ESTADO/puestos_apagados_desde")"
+    total="$(cat "$ESTADO/puestos_segundos" 2>/dev/null || echo 0)"
+    echo $(( total + ok * (AHORA - desde) )) > "$ESTADO/puestos_segundos"
+    rm -f "$ESTADO/puestos_apagados_desde" "$ESTADO/puestos_apagados_ok"
+  fi
+fi
+metricas

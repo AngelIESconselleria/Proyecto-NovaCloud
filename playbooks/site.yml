@@ -48,3 +48,6 @@
   become: true
   roles:
     - copias_seguridad
+
+- name: Plan Green IT
+  ansible.builtin.import_playbook: green_it.yml

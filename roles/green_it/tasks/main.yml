@@ -1,0 +1,120 @@
+---
+- name: Crear directorios de configuración, estado y métricas
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ green_conf_dir }}"
+    - "{{ green_estado_dir }}"
+    - "{{ green_textfile_dir }}"
+
+- name: Lista de días cerrados (festivos y vacaciones)
+  ansible.builtin.copy:
+    dest: "{{ green_conf_dir }}/dias_cerrados.txt"
+    content: "{{ green_dias_cerrados | join('\n') }}\n"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Asegurar el exportador de métricas del sistema
+  ansible.builtin.apt:
+    name: prometheus-node-exporter
+    state: present
+  when: ansible_os_family == "Debian"
+
+- name: Leer las métricas del plan desde el directorio de texto
+  ansible.builtin.lineinfile:
+    path: /etc/default/prometheus-node-exporter
+    regexp: '^ARGS='
+    line: 'ARGS="--collector.textfile.directory={{ green_textfile_dir }}"'
+  when: ansible_os_family == "Debian"
+  notify: Reiniciar node exporter
+
+# ---------- Nodos Proxmox: invitados no productivos ----------
+- name: Script de gestión de invitados programados
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../plantillas/green_vm.sh.j2"
+    dest: /usr/local/sbin/green-vm.sh
+    owner: root
+    group: root
+    mode: "0750"
+  when: inventory_hostname in groups['proxmox']
+
+- name: Encender los entornos de horario laboral
+  ansible.builtin.cron:
+    name: "Green IT: encender invitados de horario"
+    minute: "{{ green_vm_encendido.minuto }}"
+    hour: "{{ green_vm_encendido.hora }}"
+    weekday: "1-5"
+    job: /usr/local/sbin/green-vm.sh start horario
+  when: inventory_hostname in groups['proxmox']
+
+- name: Apagar los entornos de horario laboral
+  ansible.builtin.cron:
+    name: "Green IT: apagar invitados de horario"
+    minute: "{{ green_vm_apagado.minuto }}"
+    hour: "{{ green_vm_apagado.hora }}"
+    weekday: "1-5"
+    job: /usr/local/sbin/green-vm.sh stop horario
+  when: inventory_hostname in groups['proxmox']
+
+- name: Cierre diario de los entornos bajo demanda
+  ansible.builtin.cron:
+    name: "Green IT: cierre de entornos bajo demanda"
+    minute: "{{ green_cierre_demanda.minuto }}"
+    hour: "{{ green_cierre_demanda.hora }}"
+    job: /usr/local/sbin/green-vm.sh stop demanda
+  when: inventory_hostname in groups['proxmox']
+
+- name: Exportar las métricas cada 15 minutos
+  ansible.builtin.cron:
+    name: "Green IT: métricas de invitados"
+    minute: "*/15"
+    job: /usr/local/sbin/green-vm.sh metricas
+  when: inventory_hostname in groups['proxmox']
+
+# ---------- ans01: puestos de trabajo ----------
+- name: Instalar Wake-on-LAN
+  ansible.builtin.apt:
+    name: wakeonlan
+    state: present
+  when: inventory_hostname == "ans01"
+
+- name: Lista de puestos de trabajo
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../plantillas/green_puestos.txt.j2"
+    dest: "{{ green_conf_dir }}/puestos.txt"
+    owner: root
+    group: root
+    mode: "0644"
+  when: inventory_hostname == "ans01"
+
+- name: Script de apagado y encendido de puestos
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../plantillas/green_pcs.sh.j2"
+    dest: /usr/local/sbin/green-pcs.sh
+    owner: root
+    group: root
+    mode: "0750"
+  when: inventory_hostname == "ans01"
+
+- name: Encender los puestos por la mañana
+  ansible.builtin.cron:
+    name: "Green IT: encender puestos"
+    minute: "{{ green_pc_encendido.minuto }}"
+    hour: "{{ green_pc_encendido.hora }}"
+    weekday: "1-5"
+    job: /usr/local/sbin/green-pcs.sh encender
+  when: inventory_hostname == "ans01"
+
+- name: Apagar los puestos por la tarde
+  ansible.builtin.cron:
+    name: "Green IT: apagar puestos"
+    minute: "{{ green_pc_apagado.minuto }}"
+    hour: "{{ green_pc_apagado.hora }}"
+    weekday: "1-5"
+    job: /usr/local/sbin/green-pcs.sh apagar
+  when: inventory_hostname == "ans01"

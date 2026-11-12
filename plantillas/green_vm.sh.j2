@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+# Gestionado por Ansible (rol green_it). No editar a mano.
+# Apaga y enciende invitados no productivos y exporta métricas para Prometheus.
+# Uso: green-vm.sh {start|stop|metricas} [horario|demanda|todos]
+set -uo pipefail
+
+ESTADO="{{ green_estado_dir }}"
+TEXTFILE="{{ green_textfile_dir }}"
+CERRADOS="{{ green_conf_dir }}/dias_cerrados.txt"
+LOG="{{ green_log }}"
+HOY="${GREEN_HOY:-$(date +%F)}"
+AHORA="${GREEN_AHORA:-$(date +%s)}"
+
+# tipo|vmid|nombre|vcpu|modo
+INVITADOS=(
+{% for g in green_invitados %}
+  "{{ g.tipo }}|{{ g.vmid }}|{{ g.nombre }}|{{ g.vcpu }}|{{ g.modo }}"
+{% endfor %}
+)
+
+ACCION="${1:-}"
+FILTRO="${2:-todos}"
+case "$ACCION" in
+  start|stop|metricas) ;;
+  *) echo "Uso: $0 {start|stop|metricas} [horario|demanda|todos]" >&2; exit 2 ;;
+esac
+mkdir -p "$ESTADO" "$TEXTFILE"
+
+log() { echo "$(date -d "@$AHORA" '+%F %T') $*" >> "$LOG"; }
+
+comando() { if [ "$1" = "lxc" ]; then echo pct; else echo qm; fi; }
+
+estado_invitado() {   # imprime running, stopped o ausente
+  local out
+  out="$("$(comando "$1")" status "$2" 2>/dev/null)" || { echo ausente; return; }
+  echo "${out##* }"
+}
+
+dia_cerrado() { [ -f "$CERRADOS" ] && grep -qx "$HOY" "$CERRADOS"; }
+
+acumular() {          # suma las vCPU-segundos que estuvo apagado y cierra el intervalo
+  local nombre="$1" vcpu="$2" desde seg total
+  [ -f "$ESTADO/$nombre.apagado_desde" ] || return 0
+  desde="$(cat "$ESTADO/$nombre.apagado_desde")"
+  seg=$(( AHORA - desde ))
+  [ "$seg" -lt 0 ] && seg=0
+  total="$(cat "$ESTADO/$nombre.vcpu_segundos" 2>/dev/null || echo 0)"
+  echo $(( total + seg * vcpu )) > "$ESTADO/$nombre.vcpu_segundos"
+  rm -f "$ESTADO/$nombre.apagado_desde"
+}
+
+parar() {
+  local tipo="$1" id="$2" nombre="$3" vcpu="$4" cmd
+  cmd="$(comando "$tipo")"
+  case "$(estado_invitado "$tipo" "$id")" in
+    running)
+      acumular "$nombre" "$vcpu"     # por si se encendió a mano tras un apagado anterior
+      "$cmd" shutdown "$id" --timeout 120 >/dev/null 2>&1 || "$cmd" stop "$id" >/dev/null 2>&1
+      echo "$AHORA" > "$ESTADO/$nombre.apagado_desde"
+      log "APAGADO $nombre ($tipo $id)" ;;
+    stopped)
+      [ -f "$ESTADO/$nombre.apagado_desde" ] || echo "$AHORA" > "$ESTADO/$nombre.apagado_desde"
+      log "SIN CAMBIOS $nombre ya estaba apagado" ;;
+    *) log "OMITIDO $nombre: no está en este nodo" ;;
+  esac
+}
+
+arrancar() {
+  local tipo="$1" id="$2" nombre="$3" vcpu="$4" cmd
+  cmd="$(comando "$tipo")"
+  if dia_cerrado; then log "DIA CERRADO $nombre sigue apagado"; return 0; fi
+  case "$(estado_invitado "$tipo" "$id")" in
+    stopped)
+      if "$cmd" start "$id" >/dev/null 2>&1; then
+        acumular "$nombre" "$vcpu"
+        log "ENCENDIDO $nombre ($tipo $id)"
+      else
+        log "ERROR al encender $nombre"
+      fi ;;
+    running) log "SIN CAMBIOS $nombre ya estaba encendido" ;;
+    *) log "OMITIDO $nombre: no está en este nodo" ;;
+  esac
+}
+
+metricas() {
+  local tmp tipo id nombre vcpu modo e total extra
+  tmp="$(mktemp "$TEXTFILE/.green.XXXXXX")"
+  {
+    echo "# HELP novacloud_green_vcpu_horas_ahorradas_total Horas de vCPU con el invitado apagado por el plan Green IT"
+    echo "# TYPE novacloud_green_vcpu_horas_ahorradas_total counter"
+    for entrada in "${INVITADOS[@]}"; do
+      IFS='|' read -r tipo id nombre vcpu modo <<< "$entrada"
+      e="$(estado_invitado "$tipo" "$id")"
+      [ "$e" = "ausente" ] && continue
+      if [ "$e" = "running" ]; then acumular "$nombre" "$vcpu"; fi
+      if [ "$e" = "stopped" ] && [ ! -f "$ESTADO/$nombre.apagado_desde" ]; then echo "$AHORA" > "$ESTADO/$nombre.apagado_desde"; fi
+      total="$(cat "$ESTADO/$nombre.vcpu_segundos" 2>/dev/null || echo 0)"
+      extra=0
+      if [ "$e" = "stopped" ]; then extra=$(( (AHORA - $(cat "$ESTADO/$nombre.apagado_desde")) * vcpu )); fi
+      awk -v s=$(( total + extra )) -v n="$nombre" 'BEGIN { printf "novacloud_green_vcpu_horas_ahorradas_total{invitado=\"%s\"} %.4f\n", n, s/3600 }'
+    done
+    echo "# HELP novacloud_green_invitado_encendido 1 si el invitado programado esta encendido"
+    echo "# TYPE novacloud_green_invitado_encendido gauge"
+    for entrada in "${INVITADOS[@]}"; do
+      IFS='|' read -r tipo id nombre vcpu modo <<< "$entrada"
+      e="$(estado_invitado "$tipo" "$id")"
+      [ "$e" = "ausente" ] && continue
+      if [ "$e" = "running" ]; then echo "novacloud_green_invitado_encendido{invitado=\"$nombre\"} 1"; else echo "novacloud_green_invitado_encendido{invitado=\"$nombre\"} 0"; fi
+    done
+  } > "$tmp"
+  chmod 0644 "$tmp"
+  mv "$tmp" "$TEXTFILE/novacloud_green_invitados.prom"
+}
+
+if [ "$ACCION" != "metricas" ]; then
+  for entrada in "${INVITADOS[@]}"; do
+    IFS='|' read -r tipo id nombre vcpu modo <<< "$entrada"
+    if [ "$FILTRO" != "todos" ] && [ "$FILTRO" != "$modo" ]; then continue; fi
+    if [ "$ACCION" = "stop" ]; then parar "$tipo" "$id" "$nombre" "$vcpu"; else arrancar "$tipo" "$id" "$nombre" "$vcpu"; fi
+  done
+fi
+metricas

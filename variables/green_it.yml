@@ -1,0 +1,29 @@
+---
+# Plan Green IT: calendario y elementos programados (ver documentacion/green_it.md)
+green_invitados:
+  # tipo: qemu o lxc · modo: horario (encendido en horario laboral) o demanda (solo bajo petición)
+  - { tipo: qemu, vmid: 201, nombre: erp-pre, vcpu: 2, modo: horario }
+  - { tipo: qemu, vmid: 202, nombre: restore-test, vcpu: 2, modo: demanda }
+
+green_vm_encendido: { hora: 7, minuto: 30 }      # lunes a viernes
+green_vm_apagado: { hora: 19, minuto: 30 }       # lunes a viernes
+green_cierre_demanda: { hora: 23, minuto: 0 }    # cada día: apaga lo que se dejó encendido a mano
+green_pc_encendido: { hora: 7, minuto: 45 }      # lunes a viernes
+green_pc_apagado: { hora: 19, minuto: 30 }       # lunes a viernes
+
+# Festivos y cierres de vacaciones del cliente (unos 41 al año). Ejemplo; completar con el calendario real.
+green_dias_cerrados:
+  - "2027-01-01"
+  - "2027-01-06"
+  - "2027-05-01"
+  - "2027-12-25"
+
+# Puestos de trabajo: nombre de host y MAC (valores de ejemplo)
+green_puestos:
+  - { nombre: pc01, mac: "AA:BB:CC:DD:EE:01" }
+  - { nombre: pc02, mac: "AA:BB:CC:DD:EE:02" }
+  - { nombre: pc03, mac: "AA:BB:CC:DD:EE:03" }
+# ... hasta pc18
+
+green_wol_broadcast: 10.108.60.255               # broadcast de la VLAN 60
+green_usuario_puestos: ansible                   # necesita sudo sin contraseña solo para shutdown

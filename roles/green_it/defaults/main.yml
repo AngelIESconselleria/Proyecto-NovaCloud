@@ -1,0 +1,8 @@
+---
+green_conf_dir: /etc/novacloud-green
+green_estado_dir: /var/lib/novacloud-green
+green_textfile_dir: /var/lib/prometheus/node-exporter
+green_log: /var/log/novacloud-green.log
+green_invitados: []
+green_dias_cerrados: []
+green_puestos: []

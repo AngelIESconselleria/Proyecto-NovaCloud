@@ -1,0 +1,9 @@
+# Secretos: nunca al repositorio en texto claro
+.vault_pass
+*.key
+*.pem
+.env
+# Python / herramientas
+.venv/
+__pycache__/
+*.retry

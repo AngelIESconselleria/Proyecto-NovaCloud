@@ -1,0 +1,4 @@
+# Gestionado por Ansible (rol green_it). Formato: nombre mac
+{% for p in green_puestos %}
+{{ p.nombre }} {{ p.mac }}
+{% endfor %}

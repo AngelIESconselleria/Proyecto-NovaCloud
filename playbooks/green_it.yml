@@ -1,0 +1,9 @@
+---
+# Plan Green IT:  ansible-playbook playbooks/green_it.yml --check --diff
+- name: Apagado y encendido programado (nodos Proxmox y nodo de control)
+  hosts: proxmox:ans01
+  become: true
+  vars_files:
+    - ../variables/green_it.yml
+  roles:
+    - green_it
