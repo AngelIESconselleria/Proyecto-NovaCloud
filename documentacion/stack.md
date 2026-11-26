@@ -1,14 +1,14 @@
-# Stack tecnológico
+# Stack tecnológico (gratuito, para un equipo de 8 GB)
 
 | Categoría | Tecnología |
 | --- | --- |
-| Virtualización | Proxmox VE (KVM y LXC) con ZFS |
-| Sistema operativo | Debian 12/13, AlmaLinux 9 (FreeIPA), OPNsense |
+| Virtualización | Proxmox VE (KVM y LXC) con LVM-thin |
+| Sistema operativo | Debian 13 y OPNsense |
 | Servidor web | Nginx (proxy inverso) y Apache (Nextcloud) |
-| Base de datos | PostgreSQL |
+| Base de datos | PostgreSQL (dentro de app01) |
 | Contenedores | LXC y Docker |
-| Automatización | Ansible, cloud-init, Bash |
-| Firewall | OPNsense, Suricata y nftables local |
-| Monitorización | Prometheus, Grafana, Loki, Alertmanager |
-| Copias de seguridad | Proxmox Backup Server |
-| Control de versiones | Git (Gitea) |
+| Automatización | Ansible y Bash |
+| Firewall | OPNsense (sin Suricata) y nftables local |
+| Monitorización | Prometheus y Grafana |
+| Copias de seguridad | vzdump y rclone cifrado |
+| Control de versiones | Git (GitHub) |

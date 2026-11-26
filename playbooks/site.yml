@@ -10,7 +10,7 @@
     - seguridad
 
 - name: Firewall local por servidor
-  hosts: all:!firewall:!proxmox:!backup
+  hosts: all:!firewall:!proxmox
   become: true
   vars_files:
     - ../variables/red.yml
@@ -44,7 +44,9 @@
     - monitorizacion
 
 - name: Copias de configuración y bases de datos
-  hosts: management:db:app:web
+  hosts: management:db:app:web:proxmox
+  vars_files:
+    - ../variables/copias.yml
   become: true
   roles:
     - copias_seguridad

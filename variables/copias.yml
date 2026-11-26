@@ -1,0 +1,6 @@
+---
+# Copias del prototipo: vzdump local en pve1 y copia cifrada remota con rclone
+copias_vmids: [101, 102, 103, 104, 105]     # fw01, proxy01, app01, mon01, ans01
+copias_almacen: copias-local                # almacenamiento tipo directorio en pve1
+copias_remoto_rclone: cifrado-nube          # remoto rclone con cifrado (crypt), configurado a mano
+copias_remoto_ruta: novacloud

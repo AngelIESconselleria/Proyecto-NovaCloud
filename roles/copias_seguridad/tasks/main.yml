@@ -22,3 +22,35 @@
     hour: "{{ copias_hora }}"
     job: /usr/local/sbin/backup-config.sh
     user: root
+
+# ---------- pve1: copias de los invitados ----------
+- name: Instalar rclone en el nodo Proxmox
+  ansible.builtin.apt:
+    name: rclone
+    state: present
+  when: inventory_hostname in groups['proxmox']
+
+- name: Script de copia de invitados (vzdump y rclone)
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../plantillas/backup_vzdump.sh.j2"
+    dest: /usr/local/sbin/backup-vzdump.sh
+    owner: root
+    group: root
+    mode: "0750"
+  when: inventory_hostname in groups['proxmox']
+
+- name: Programar la copia local de los invitados (02:30)
+  ansible.builtin.cron:
+    name: "vzdump local de los invitados"
+    minute: "30"
+    hour: "2"
+    job: /usr/local/sbin/backup-vzdump.sh local
+  when: inventory_hostname in groups['proxmox']
+
+- name: Programar la copia remota cifrada (03:30)
+  ansible.builtin.cron:
+    name: "Copia remota cifrada con rclone"
+    minute: "30"
+    hour: "3"
+    job: /usr/local/sbin/backup-vzdump.sh remota
+  when: inventory_hostname in groups['proxmox']

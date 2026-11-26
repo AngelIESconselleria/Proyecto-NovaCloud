@@ -1,21 +1,21 @@
-# Arquitectura de NovaCloud
+# Arquitectura de NovaCloud (versión 2: un solo equipo)
 
-Resumen del Blueprint de la Tarea 10. Dos nodos Proxmox VE (pve1, pve2) con ZFS en espejo,
-un servidor de copias físico (pbs1) y un único router/firewall (fw01, OPNsense) que enruta entre VLAN.
+Resumen de la Tarea 10 (v2). Un único ordenador (Pentium Gold G5400, 8 GB de RAM, HDD de 500 GB, una tarjeta de red)
+con Proxmox VE (pve1) y un firewall (fw01, OPNsense) que enruta entre cuatro VLAN. Sin alta disponibilidad.
 
 | VLAN | Zona | Red | Servicios |
 | --- | --- | --- | --- |
-| 10 | Gestión | 10.108.10.0/24 | bas01, ans01, mon01, nodos Proxmox |
-| 20 | DMZ | 10.108.20.0/24 | proxy01 (Nginx + ModSecurity) |
-| 30 | Servicios internos | 10.108.30.0/24 | ipa01, erp01, nc01 |
-| 40 | Datos | 10.108.40.0/24 | db01 (PostgreSQL) |
-| 50 | Copias | 10.108.50.0/24 | pbs1 (Proxmox Backup Server) |
+| 10 | Gestión | 10.108.10.0/24 | pve1 (.5), ans01 (.10, Ansible y bastion), mon01 (.20) |
+| 20 | DMZ | 10.108.20.0/24 | proxy01 (Nginx) |
+| 30 | Servicios internos | 10.108.30.0/24 | app01 (Nextcloud y PostgreSQL), restore-test (.90, bajo demanda) |
 | 60 | Usuarios | 10.108.60.0/24 | Puestos de la oficina (DHCP) |
 
-Otras redes: VPN de usuarios (WireGuard) 10.108.100.0/24, VPN de administradores (OpenVPN)
-10.108.101.0/24 y enlace directo pve1–pve2 10.108.90.0/30.
+Otras redes: VPN de usuarios (WireGuard) 10.108.100.0/24 y VPN de administradores (OpenVPN) 10.108.101.0/24.
 
 ## Política de tráfico
-Bloqueo por defecto. Desde Internet solo se abren 443/TCP, 51820/UDP (WireGuard) y 1194/UDP (OpenVPN).
-La DMZ solo habla con erp01 (8069/8072) y nc01 (443); la base de datos solo acepta a erp01 y nc01
-en el 5432; el servidor de copias no inicia conexiones; los administradores entran solo por bas01.
+Bloqueo por defecto con 17 reglas. Desde Internet solo se abren 443/TCP, 51820/UDP (WireGuard) y 1194/UDP (OpenVPN).
+La DMZ solo habla con app01 (443); los administradores entran solo por ans01.
+
+## Límites asumidos
+Sin HA (objetivo de laboratorio: RPO de 24 h), copias en el mismo disco más una copia cifrada remota parcial,
+y 100 GB de datos de demostración. Sin FreeIPA, ERP, Loki, Suricata ni ModSecurity por falta de RAM y CPU.

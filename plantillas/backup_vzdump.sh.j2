@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Gestionado por Ansible (rol copias_seguridad). Se ejecuta solo en pve1.
+# Uso: backup-vzdump.sh {local|remota}
+set -euo pipefail
+case "${1:-}" in
+  local)
+    vzdump {{ copias_vmids | join(' ') }} --storage {{ copias_almacen }} --mode snapshot \
+      --compress zstd --prune-backups keep-daily=7,keep-weekly=2
+    ;;
+  remota)
+    rclone copy /var/lib/vz/dump {{ copias_remoto_rclone }}:{{ copias_remoto_ruta }} --max-age 24h
+    ;;
+  *) echo "Uso: $0 {local|remota}" >&2; exit 2 ;;
+esac

@@ -2,8 +2,7 @@
 # Plan Green IT: calendario y elementos programados (ver documentacion/green_it.md)
 green_invitados:
   # tipo: qemu o lxc · modo: horario (encendido en horario laboral) o demanda (solo bajo petición)
-  - { tipo: qemu, vmid: 201, nombre: erp-pre, vcpu: 2, modo: horario }
-  - { tipo: qemu, vmid: 202, nombre: restore-test, vcpu: 2, modo: demanda }
+  - { tipo: lxc, vmid: 106, nombre: restore-test, vcpu: 2, modo: demanda }
 
 green_vm_encendido: { hora: 7, minuto: 30 }      # lunes a viernes
 green_vm_apagado: { hora: 19, minuto: 30 }       # lunes a viernes
